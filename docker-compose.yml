@@ -1,0 +1,73 @@
+version: '3.8'
+services:
+  api:
+    #    container_name: mufti-belajar
+    build:
+      #      context: mufti-belajar
+      context: .
+      dockerfile: Dockerfile
+    #    image: "mufti-belajar.jar"
+    networks:
+      - broker-kafka
+    ports:
+      - "8080:8080"
+#    depends_on:
+#      - postgresku
+    #        condition: service_healthy
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/postgres
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_JPA_SHOW-SQL=true
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_KAFKA_PRODUCER_BOOTSTRAP-SERVERS=kafka:29092
+      - SPRING_KAFKA_CONSUMER_BOOTSTRAP-SERVERS=kafka:29092
+  postgres:
+    image: postgres:12
+    #    image: postgres
+    networks:
+      - broker-kafka
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+      - POSTGRES_HOST_AUTH_METHOD=trust
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    networks:
+      - broker-kafka
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    networks:
+    - broker-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - 9092:9092
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+  kafdrop:
+    image: obsidiandynamics/kafdrop:latest
+    networks:
+      - broker-kafka
+    depends_on:
+      - kafka
+    ports:
+      - 19000:9000
+    environment:
+      ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_BROKERCONNECT: kafka:29092
+
+networks:
+  broker-kafka:
+    driver: bridge
